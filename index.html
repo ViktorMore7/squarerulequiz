@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Square Rule Quiz - Chess for Kids</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .chess-square {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        @media (max-width: 640px) {
+            .chess-square {
+                font-size: 1.8rem;
+            }
+        }
+        
+        .square-light {
+            background-color: #f0d9b5;
+        }
+        
+        .square-dark {
+            background-color: #b58863;
+        }
+        
+        .square-highlight {
+            background-color: #ffd700 !important;
+            box-shadow: inset 0 0 15px rgba(255, 215, 0, 0.8);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .square-correct {
+            background-color: #86efac !important;
+            animation: bounce 0.5s;
+        }
+        
+        .square-wrong {
+            background-color: #fca5a5 !important;
+            animation: shake 0.5s;
+        }
+        
+        .piece-white {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5), -1px -1px 2px rgba(0,0,0,0.3);
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+        }
+        
+        .piece-black {
+            color: #1a1a1a;
+            text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
+            filter: drop-shadow(0 0 1px rgba(255,255,255,0.5));
+        }
+        
+        .king-marker {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            font-size: 0.7rem;
+            background: rgba(255,255,255,0.9);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        
+        .btn-answer {
+            transition: all 0.2s;
+            transform: scale(1);
+        }
+        
+        .btn-answer:hover {
+            transform: scale(1.05);
+        }
+        
+        .btn-answer:active {
+            transform: scale(0.95);
+        }
+        
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: #f0f;
+            animation: confetti-fall 3s linear forwards;
+            z-index: 50;
+        }
+        
+        @keyframes confetti-fall {
+            to {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .card-shadow {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-6 text-white">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-2 flex items-center justify-center gap-3">
+                <i data-lucide="crown" class="w-10 h-10 md:w-12 md:h-12 text-yellow-300"></i>
+                Square Rule Quiz
+                <i data-lucide="target" class="w-10 h-10 md:w-12 md:h-12 text-yellow-300"></i>
+            </h1>
+            <p class="text-lg md:text-xl opacity-90">Can the King catch the Pawn before it promotes? 🤔</p>
+        </header>
+
+        <!-- Main Game Card -->
+        <div class="bg-white rounded-3xl card-shadow p-4 md:p-8 mb-6">
+            <!-- Progress Bar -->
+            <div class="mb-6">
+                <div class="flex justify-between mb-2 text-sm font-bold text-gray-600">
+                    <span>Question <span id="current-q">1</span>/25</span>
+                    <span>Score: <span id="score-display" class="text-purple-600 text-lg">0</span>/25</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div id="progress-bar" class="progress-bar bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full" style="width: 4%"></div>
+                </div>
+            </div>
+
+            <!-- Chess Board -->
+            <div class="flex flex-col items-center mb-6">
+                <div class="relative">
+                    <!-- File labels top -->
+                    <div class="flex justify-between px-2 mb-1 text-xs font-bold text-gray-500 w-full max-w-[400px]">
+                        <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>
+                    </div>
+                    
+                    <div class="flex">
+                        <!-- Rank labels left -->
+                        <div class="flex flex-col justify-between py-2 pr-2 text-xs font-bold text-gray-500 h-[350px] w-[350px] md:h-[400px] md:w-[400px]">
+                            <span>8</span>
+                            <span>7</span>
+                            <span>6</span>
+                            <span>5</span>
+                            <span>4</span>
+                            <span>3</span>
+                            <span>2</span>
+                            <span>1</span>
+                        </div>
+                        
+                        <!-- The Board -->
+                        <div id="chessboard" class="grid grid-cols-8 gap-0 border-4 border-gray-800 rounded-lg overflow-hidden h-[350px] w-[350px] md:h-[400px] md:w-[400px] bg-gray-800">
+                            <!-- Squares generated by JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div class="flex justify-center gap-4 mt-4 text-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 bg-yellow-400 rounded shadow"></div>
+                            <span class="text-gray-700 font-semibold">The Square</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 bg-green-400 rounded shadow"></div>
+                            <span class="text-gray-700 font-semibold">Correct!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question Area -->
+            <div id="question-area" class="text-center mb-6">
+                <div class="bg-blue-50 rounded-2xl p-4 mb-4 border-2 border-blue-200">
+                    <p class="text-lg md:text-xl font-bold text-gray-800 mb-2">
+                        <span id="pawn-color-text" class="text-purple-600">White</span> Pawn on <span id="pawn-pos" class="font-mono bg-gray-200 px-2 py-1 rounded">d5</span>
+                    </p>
+                    <p class="text-lg md:text-xl font-bold text-gray-800">
+                        <span id="king-color-text" class="text-gray-800">Black</span> King on <span id="king-pos" class="font-mono bg-gray-200 px-2 py-1 rounded">f6</span>
+                    </p>
+                    <p class="text-md text-gray-600 mt-2 italic">Pawn promotes on <span id="promotion-pos" class="font-semibold">d8</span></p>
+                </div>
+                
+                <h3 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Is the King inside the square? 👑</h3>
+                <p class="text-gray-600 mb-4">Can the King catch the Pawn before it promotes?</p>
+            </div>
+
+            <!-- Answer Buttons -->
+            <div id="answer-buttons" class="flex gap-4 justify-center mb-6">
+                <button onclick="checkAnswer(true)" class="btn-answer bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-2xl text-xl shadow-lg flex items-center gap-2">
+                    <i data-lucide="check-circle" class="w-6 h-6"></i>
+                    YES
+                </button>
+                <button onclick="checkAnswer(false)" class="btn-answer bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-8 rounded-2xl text-xl shadow-lg flex items-center gap-2">
+                    <i data-lucide="x-circle" class="w-6 h-6"></i>
+                    NO
+                </button>
+            </div>
+
+            <!-- Feedback Area (Hidden initially) -->
+            <div id="feedback-area" class="hidden text-center mb-6">
+                <div id="feedback-box" class="rounded-2xl p-6 mb-4 text-white font-bold text-xl shadow-lg transform transition-all">
+                    <div class="flex items-center justify-center gap-3 mb-2">
+                        <i id="feedback-icon" data-lucide="star" class="w-8 h-8"></i>
+                        <span id="feedback-text">Correct!</span>
+                    </div>
+                    <p id="explanation-text" class="text-lg font-normal opacity-90 mt-2"></p>
+                </div>
+                
+                <button onclick="nextQuestion()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-2xl text-lg shadow-lg flex items-center gap-2 mx-auto transition-all hover:scale-105">
+                    Next Question
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Results Screen (Hidden initially) -->
+        <div id="results-screen" class="hidden bg-white rounded-3xl card-shadow p-8 text-center">
+            <div class="mb-6">
+                <div class="inline-block p-4 rounded-full bg-yellow-100 mb-4">
+                    <i data-lucide="trophy" class="w-16 h-16 text-yellow-600"></i>
+                </div>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">Quiz Complete! 🎉</h2>
+                <p class="text-xl text-gray-600">You are a Square Rule Master!</p>
+            </div>
+            
+            <div class="text-6xl font-bold text-purple-600 mb-2" id="final-score">0/25</div>
+            <div class="text-lg text-gray-600 mb-8" id="final-message">Great job!</div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 max-w-2xl mx-auto">
+                <div class="bg-blue-50 p-4 rounded-xl">
+                    <div class="text-2xl font-bold text-blue-600" id="correct-count">0</div>
+                    <div class="text-sm text-gray-600">Correct</div>
+                </div>
+                <div class="bg-red-50 p-4 rounded-xl">
+                    <div class="text-2xl font-bold text-red-600" id="wrong-count">0</div>
+                    <div class="text-sm text-gray-600">Wrong</div>
+                </div>
+                <div class="bg-purple-50 p-4 rounded-xl">
+                    <div class="text-2xl font-bold text-purple-600" id="percentage">0%</div>
+                    <div class="text-sm text-gray-600">Accuracy</div>
+                </div>
+                <div class="bg-green-50 p-4 rounded-xl">
+                    <div class="text-2xl font-bold text-green-600">25</div>
+                    <div class="text-sm text-gray-600">Total</div>
+                </div>
+            </div>
+            
+            <button onclick="restartQuiz()" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-4 px-10 rounded-2xl text-xl shadow-lg flex items-center gap-3 mx-auto transition-all hover:scale-105">
+                <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+                Play Again
+            </button>
+        </div>
+
+        <!-- Instructions Card -->
+        <div class="bg-white/90 backdrop-blur rounded-2xl p-6 text-sm text-gray-700 max-w-4xl mx-auto">
+            <h4 class="font-bold text-lg mb-2 flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-5 h-5 text-purple-600"></i>
+                How to play:
+            </h4>
+            <ul class="space-y-2 list-disc list-inside">
+                <li>Look at the <strong>Pawn</strong> (♙ or ♟) and where it wants to promote</li>
+                <li>Imagine a square from the Pawn to the promotion square</li>
+                <li>The square extends sideways the same number of squares as the Pawn needs to travel</li>
+                <li>If the <strong>King</strong> (♔ or ♚) is inside this yellow square, click <strong>YES</strong></li>
+                <li>If the King is outside the square, click <strong>NO</strong></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Chess pieces Unicode
+        const PIECES = {
+            whiteKing: '♔',
+            whitePawn: '♙',
+            blackKing: '♚',
+            blackPawn: '♟'
+        };
+
+        // File and rank mappings
+        const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+        const RANKS = [8, 7, 6, 5, 4, 3, 2, 1]; // Display order top to bottom
+
+        // 25 Questions Data
+        const questions = [
+            { pawn: {f:3, r:5, color: 'white'}, king: {f:5, r:6, color: 'black'}, promo: 8, answer: true }, // d5, f6 -> Yes
+            { pawn: {f:4, r:4, color: 'white'}, king: {f:4, r:7, color: 'black'}, promo: 8, answer: true }, // e4, e7 -> Yes
+            { pawn: {f:2, r:5, color: 'black'}, king: {f:0, r:3, color: 'white'}, promo: 1, answer: true }, // c5, a3 -> Yes
+            { pawn: {f:1, r:6, color: 'white'}, king: {f:4, r:7, color: 'black'}, promo: 8, answer: false }, // b6, e7 -> No
+            { pawn: {f:6, r:5, color: 'black'}, king: {f:7, r:6, color: 'white'}, promo: 1, answer: false }, // g5, h6 -> No
+            { pawn: {f:0, r:5, color: 'white'}, king: {f:2, r:7, color: 'black'}, promo: 8, answer: true }, // a5, c7 -> Yes
+            { pawn: {f:5, r:4, color: 'white'}, king: {f:6, r:8, color: 'black'}, promo: 8, answer: true }, // f4, g8 -> Yes
+            { pawn: {f:3, r:6, color: 'black'}, king: {f:1, r:5, color: 'white'}, promo: 1, answer: true }, // d6, b5 -> Yes
+            { pawn: {f:7, r:5, color: 'white'}, king: {f:7, r:7, color: 'black'}, promo: 8, answer: true }, // h5, h7 -> Yes
+            { pawn: {f:4, r:5, color: 'black'}, king: {f:1, r:4, color: 'white'}, promo: 1, answer: true }, // e5, b4 -> Yes
+            { pawn: {f:2, r:4, color: 'white'}, king: {f:5, r:6, color: 'black'}, promo: 8, answer: true }, // c4, f6 -> Yes
+            { pawn: {f:5, r:6, color: 'black'}, king: {f:5, r:2, color: 'white'}, promo: 1, answer: true }, // f6, f2 -> Yes
+            { pawn: {f:6, r:5, color: 'white'}, king: {f:4, r:6, color: 'black'}, promo: 8, answer: true }, // g5, e6 -> Yes
+            { pawn: {f:1, r:5, color: 'black'}, king: {f:1, r:2, color: 'white'}, promo: 1, answer: true }, // b5, b2 -> Yes
+            { pawn: {f:4, r:6, color: 'white'}, king: {f:6, r:8, color: 'black'}, promo: 8, answer: true }, // e6, g8 -> Yes
+            { pawn: {f:7, r:4, color: 'black'}, king: {f:5, r:3, color: 'white'}, promo: 1, answer: true }, // h4, f3 -> Yes
+            { pawn: {f:3, r:5, color: 'white'}, king: {f:3, r:7, color: 'black'}, promo: 8, answer: true }, // d5, d7 -> Yes
+            { pawn: {f:2, r:6, color: 'black'}, king: {f:4, r:6, color: 'white'}, promo: 1, answer: true }, // c6, e6 -> Yes
+            { pawn: {f:1, r:4, color: 'white'}, king: {f:0, r:5, color: 'black'}, promo: 8, answer: true }, // b4, a5 -> Yes
+            { pawn: {f:6, r:6, color: 'black'}, king: {f:6, r:3, color: 'white'}, promo: 1, answer: true }, // g6, g3 -> Yes
+            { pawn: {f:5, r:5, color: 'white'}, king: {f:5, r:7, color: 'black'}, promo: 8, answer: true }, // f5, f7 -> Yes
+            { pawn: {f:3, r:4, color: 'black'}, king: {f:1, r:2, color: 'white'}, promo: 1, answer: true }, // d4, b2 -> Yes
+            { pawn: {f:7, r:6, color: 'white'}, king: {f:5, r:8, color: 'black'}, promo: 8, answer: true }, // h6, f8 -> Yes
+            { pawn: {f:0, r:6, color: 'black'}, king: {f:2, r:6, color: 'white'}, promo: 1, answer: true }, // a6, c6 -> Yes
+            { pawn: {f:2, r:5, color: 'white'}, king: {f:4, r:5, color: 'black'}, promo: 8, answer: true }, // c5, e5 -> Yes
+        ];
+
+        // State
+        let currentQuestion = 0;
+        let score = 0;
+        let showingAnswer = false;
+
+        // Initialize board
+        function initBoard() {
+            const board = document.getElementById('chessboard');
+            board.innerHTML = '';
+            
+            for (let r = 0; r < 8; r++) {
+                for (let f = 0; f < 8; f++) {
+                    const square = document.createElement('div');
+                    const isLight = (f + r) % 2 === 0;
+                    square.className = `chess-square ${isLight ? 'square-light' : 'square-dark'}`;
+                    square.dataset.file = f;
+                    square.dataset.rank = r;
+                    square.id = `square-${f}-${r}`;
+                    board.appendChild(square);
+                }
+            }
+        }
+
+        // Calculate distance (Chebyshev)
+        function getKingDistance(king, targetFile, targetRank) {
+            return Math.max(
+                Math.abs(king.f - targetFile),
+                Math.abs(king.r - targetRank)
+            );
+        }
+
+        // Render current question
+        function renderQuestion() {
+            const q = questions[currentQuestion];
+            showingAnswer = false;
+            
+            // Update text
+            document.getElementById('current-q').textContent = currentQuestion + 1;
+            document.getElementById('pawn-color-text').textContent = q.pawn.color === 'white' ? 'White' : 'Black';
+            document.getElementById('pawn-color-text').className = q.pawn.color === 'white' ? 'text-purple-600' : 'text-gray-800 font-bold';
+            document.getElementById('king-color-text').textContent = q.king.color === 'white' ? 'White' : 'Black';
+            document.getElementById('king-color-text').className = q.king.color === 'white' ? 'text-purple-600' : 'text-gray-800 font-bold';
+            
+            document.getElementById('pawn-pos').textContent = FILES[q.pawn.f] + q.pawn.r;
+            document.getElementById('king-pos').textContent = FILES[q.king.f] + q.king.r;
+            
+            const promoFile = FILES[q.pawn.f];
+            const promoRank = q.promo;
+            document.getElementById('promotion-pos').textContent = promoFile + promoRank;
+            
+            // Clear previous highlights
+            document.querySelectorAll('.chess-square').forEach(sq => {
+                sq.classList.remove('square-highlight', 'square-correct', 'square-wrong');
+                sq.innerHTML = '';
+            });
+            
+            // Place pieces (convert rank to array index: 8->0, 1->7)
+            const pawnRankIdx = 8 - q.pawn.r;
+            const kingRankIdx = 8 - q.king.r;
+            
+            const pawnSquare = document.getElementById(`square-${q.pawn.f}-${pawnRankIdx}`);
+            const kingSquare = document.getElementById(`square-${q.king.f}-${kingRankIdx}`);
+            
+            // Pawn
+            const pawnSpan = document.createElement('span');
+            pawnSpan.textContent = q.pawn.color === 'white' ? PIECES.whitePawn : PIECES.blackPawn;
+            pawnSpan.className = q.pawn.color === 'white' ? 'piece-white' : 'piece-black';
+            pawnSquare.appendChild(pawnSpan);
+            
+            // King
+            const kingSpan = document.createElement('span');
+            kingSpan.textContent = q.king.color === 'white' ? PIECES.whiteKing : PIECES.blackKing;
+            kingSpan.className = q.king.color === 'white' ? 'piece-white' : 'piece-black';
+            const kingLabel = document.createElement('div');
+            kingLabel.className = 'king-marker';
+            kingLabel.textContent = 'K';
+            kingSpan.appendChild(kingLabel);
+            kingSquare.appendChild(kingSpan);
+            
+            // Reset UI
+            document.getElementById('answer-buttons').classList.remove('hidden');
+            document.getElementById('feedback-area').classList.add('hidden');
+            
+            updateProgress();
+        }
+
+        // Highlight the square rule area
+        function highlightSquareRule(pawn, promoRank) {
+            const distance = Math.abs(promoRank - pawn.r);
+            const promoRankIdx = 8 - promoRank;
+            
+            // The square is centered on promotion square extending 'distance' in all directions
+            // Actually, it's all squares where max(|file - pawn.file|, |rank - promoRank|) <= distance
+            // But visualized as the area the king can be in to catch the pawn in time
+            
+            for (let f = 0; f < 8; f++) {
+                for (let r = 0; r < 8; r++) {
+                    const boardRank = 8 - r; // Convert back to chess rank
+                    const distFromPromo = Math.max(
+                        Math.abs(f - pawn.f),
+                        Math.abs(boardRank - promoRank)
+                    );
+                    
+                    if (distFromPromo <= distance) {
+                        const square = document.getElementById(`square-${f}-${r}`);
+                        if (!square.querySelector('.piece-white, .piece-black')) {
+                            square.classList.add('square-highlight');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check answer
+        function checkAnswer(userAnswer) {
+            if (showingAnswer) return;
+            showingAnswer = true;
+            
+            const q = questions[currentQuestion];
+            const isCorrect = userAnswer === q.answer;
+            
+            // Calculate if king is actually in square for explanation
+            const distance = Math.abs(q.promo - q.pawn.r);
+            const kingDist = getKingDistance(q.king, q.pawn.f, q.promo);
+            const inSquare = kingDist <= distance;
+            
+            // Highlight board
+            highlightSquareRule(q.pawn, q.promo);
+            
+            // Highlight king square
+            const kingRankIdx = 8 - q.king.r;
+            const kingSquare = document.getElementById(`square-${q.king.f}-${kingRankIdx}`);
+            
+            if (isCorrect) {
+                score++;
+                kingSquare.classList.add('square-correct');
+                document.getElementById('score-display').textContent = score;
+            } else {
+                kingSquare.classList.add('square-wrong');
+            }
+            
+            // Show feedback
+            const feedbackBox = document.getElementById('feedback-box');
+            const feedbackText = document.getElementById('feedback-text');
+            const feedbackIcon = document.getElementById('feedback-icon');
+            const explanation = document.getElementById('explanation-text');
+            
+            document.getElementById('answer-buttons').classList.add('hidden');
+            document.getElementById('feedback-area').classList.remove('hidden');
+            
+            if (isCorrect) {
+                feedbackBox.className = 'rounded-2xl p-6 mb-4 text-white font-bold text-xl shadow-lg transform transition-all bg-green-500';
+                feedbackText.textContent = 'Correct! 🎉';
+                feedbackIcon.setAttribute('data-lucide', 'check-circle');
+                explanation.textContent = `The King is ${kingDist} move${kingDist !== 1 ? 's' : ''} away from the promotion square, and the Pawn needs ${distance} move${distance !== 1 ? 's' : ''}. The King ${inSquare ? 'can' : 'cannot'} catch it in time!`;
+            } else {
+                feedbackBox.className = 'rounded-2xl p-6 mb-4 text-white font-bold text-xl shadow-lg transform transition-all bg-red-500';
+                feedbackText.textContent = 'Not quite! 🤔';
+                feedbackIcon.setAttribute('data-lucide', 'x-circle');
+                explanation.textContent = `The King is ${kingDist} move${kingDist !== 1 ? 's' : ''} away from the promotion square, and the Pawn needs ${distance} move${distance !== 1 ? 's' : ''}. The King ${inSquare ? 'can' : 'cannot'} catch it in time.`;
+            }
+            
+            lucide.createIcons();
+            
+            // Confetti if correct
+            if (isCorrect) {
+                createConfetti();
+            }
+        }
+
+        // Next question
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion >= questions.length) {
+                showResults();
+            } else {
+                renderQuestion();
+            }
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            const pct = ((currentQuestion) / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+        }
+
+        // Show results
+        function showResults() {
+            document.getElementById('current-q').textContent = '25';
+            document.getElementById('progress-bar').style.width = '100%';
+            
+            const mainCard = document.querySelector('.bg-white.rounded-3xl.card-shadow');
+            mainCard.classList.add('hidden');
+            
+            const resultsScreen = document.getElementById('results-screen');
+            resultsScreen.classList.remove('hidden');
+            
+            document.getElementById('final-score').textContent = `${score}/25`;
+            document.getElementById('correct-count').textContent = score;
+            document.getElementById('wrong-count').textContent = 25 - score;
+            document.getElementById('percentage').textContent = Math.round((score/25)*100) + '%';
+            
+            let message = '';
+            if (score === 25) message = 'Perfect! You are a Grandmaster! 🏆';
+            else if (score >= 20) message = 'Amazing work! You know your squares! ⭐';
+            else if (score >= 15) message = 'Good job! Keep practicing! 👍';
+            else if (score >= 10) message = 'Getting there! Review the square rule! 📚';
+            else message = 'Keep learning! You\'ll get it next time! 💪';
+            
+            document.getElementById('final-message').textContent = message;
+            
+            // Big confetti celebration
+            for (let i = 0; i < 50; i++) {
+                setTimeout(createConfetti, i * 50);
+            }
+        }
+
+        // Restart
+        function restartQuiz() {
+            currentQuestion = 0;
+            score = 0;
+            document.getElementById('score-display').textContent = '0';
+            
+            document.getElementById('results-screen').classList.add('hidden');
+            document.querySelector('.bg-white.rounded-3xl.card-shadow').classList.remove('hidden');
+            
+            renderQuestion();
+        }
+
+        // Confetti effect
+        function createConfetti() {
+            const colors = ['#f472b6', '#a78bfa', '#34d399', '#fbbf24', '#60a5fa'];
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+            document.body.appendChild(confetti);
+            setTimeout(() => confetti.remove(), 4000);
+        }
+
+        // Start
+        initBoard();
+        renderQuestion();
+    </script>
+</body>
+</html>
